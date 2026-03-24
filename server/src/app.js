@@ -1,12 +1,15 @@
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import express from "express";
+import fs from "fs";
+import path from "path";
 import adminRoutes from "./routes/adminRoutes.js";
 import donationRoutes from "./routes/donationRoutes.js";
 import ngoRoutes from "./routes/ngoRoutes.js";
 import volunteerRoutes from "./routes/volunteerRoutes.js";
 import { Donation } from "./models/Donation.js";
 import { escapeHtml } from "./utils/adminLayout.js";
+import { fileURLToPath } from "url";
 
 const app = express();
 const allowedOrigins = [
@@ -16,6 +19,11 @@ const allowedOrigins = [
   process.env.SERVER_PUBLIC_URL,
   process.env.FRONTEND_URL
 ].filter(Boolean);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const uploadDirectory = path.resolve(__dirname, "../uploads");
+
+fs.mkdirSync(uploadDirectory, { recursive: true });
 
 app.use(
   cors({
@@ -36,6 +44,7 @@ app.use(
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use("/uploads", express.static(uploadDirectory));
 
 app.get("/", (req, res) => {
   res.redirect("/admin");

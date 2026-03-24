@@ -1,3 +1,6 @@
+import fs from "fs";
+import multer from "multer";
+import path from "path";
 import { Router } from "express";
 import { getLoginPage, loginAdmin, logoutAdmin } from "../controllers/authController.js";
 import { Donation } from "../models/Donation.js";
@@ -8,8 +11,33 @@ import { Program } from "../models/Program.js";
 import { Volunteer } from "../models/Volunteer.js";
 import { requireAdminAuth } from "../middleware/authMiddleware.js";
 import { escapeHtml, layout } from "../utils/adminLayout.js";
+import { fileURLToPath } from "url";
 
 const router = Router();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const uploadDirectory = path.resolve(__dirname, "../../uploads");
+
+fs.mkdirSync(uploadDirectory, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, callback) => callback(null, uploadDirectory),
+  filename: (_req, file, callback) => {
+    const safeName = file.originalname.replace(/\s+/g, "-");
+    callback(null, `${Date.now()}-${safeName}`);
+  }
+});
+
+const upload = multer({ storage });
+
+function resolveImageUrl(req) {
+  if (req.file?.filename) {
+    const publicBase = process.env.SERVER_PUBLIC_URL || `${req.protocol}://${req.get("host")}`;
+    return `${publicBase}/uploads/${req.file.filename}`;
+  }
+
+  return req.body.imageUrl;
+}
 
 router.get("/login", getLoginPage);
 router.post("/login", loginAdmin);
@@ -118,9 +146,10 @@ router.get("/ngo", async (req, res) => {
           <td>${escapeHtml(item.title)}</td>
           <td>${escapeHtml(item.description || "-")}</td>
           <td>
-            <form class="inline" method="post" action="/admin/gallery/${item._id}/update">
+            <form class="inline" method="post" action="/admin/gallery/${item._id}/update" enctype="multipart/form-data">
               <input name="title" value="${escapeHtml(item.title)}" required />
-              <input name="imageUrl" value="${escapeHtml(item.imageUrl)}" required />
+              <input name="imageUrl" value="${escapeHtml(item.imageUrl)}" placeholder="Keep URL or upload new file" />
+              <input name="imageFile" type="file" accept="image/*" />
               <textarea name="description">${escapeHtml(item.description || "")}</textarea>
               <div class="actions"><button class="alt" type="submit">Update</button></div>
             </form>
@@ -141,30 +170,30 @@ router.get("/ngo", async (req, res) => {
           <div class="card">
             <h2>Impact Table</h2>
             <div class="split">
-              <div><table><thead><tr><th>Label</th><th>Value</th><th>Actions</th></tr></thead><tbody>${impactRows}</tbody></table></div>
+              <div class="table-wrap"><table><thead><tr><th>Label</th><th>Value</th><th>Actions</th></tr></thead><tbody>${impactRows}</tbody></table></div>
               <div><form class="stack" method="post" action="/admin/impact"><input name="label" placeholder="Impact label" required /><input name="value" placeholder="Impact value" required /><button type="submit">Create Impact Row</button></form></div>
             </div>
           </div>
           <div class="card">
             <h2>Programs Table</h2>
             <div class="split">
-              <div><table><thead><tr><th>Title</th><th>Description</th><th>Actions</th></tr></thead><tbody>${programRows}</tbody></table></div>
+              <div class="table-wrap"><table><thead><tr><th>Title</th><th>Description</th><th>Actions</th></tr></thead><tbody>${programRows}</tbody></table></div>
               <div><form class="stack" method="post" action="/admin/programs"><input name="title" placeholder="Program title" required /><textarea name="description" placeholder="Program description" required></textarea><button type="submit">Create Program</button></form></div>
             </div>
           </div>
           <div class="card">
             <h2>Involvement Table</h2>
             <div class="split">
-              <div><table><thead><tr><th>Message</th><th>Actions</th></tr></thead><tbody>${involvementRows}</tbody></table></div>
+              <div class="table-wrap"><table><thead><tr><th>Message</th><th>Actions</th></tr></thead><tbody>${involvementRows}</tbody></table></div>
               <div><form class="stack" method="post" action="/admin/involvement"><textarea name="text" placeholder="Call-to-action text" required></textarea><button type="submit">Create Involvement Row</button></form></div>
             </div>
           </div>
           <div class="card">
             <h2>Gallery Images</h2>
-            <p class="muted">Add public image URLs and captions here. These images appear in the swipe gallery on the website.</p>
+            <p class="muted">Add public image URLs or upload local files from your device. These images appear in the swipe gallery on the website.</p>
             <div class="split">
-              <div><table><thead><tr><th>Preview</th><th>Title</th><th>Description</th><th>Actions</th></tr></thead><tbody>${imageRows}</tbody></table></div>
-              <div><form class="stack" method="post" action="/admin/gallery"><input name="title" placeholder="Image title" required /><input name="imageUrl" placeholder="https://example.com/image.jpg" required /><textarea name="description" placeholder="Short description"></textarea><button type="submit">Add Gallery Image</button></form></div>
+              <div class="table-wrap"><table><thead><tr><th>Preview</th><th>Title</th><th>Description</th><th>Actions</th></tr></thead><tbody>${imageRows}</tbody></table></div>
+              <div><form class="stack" method="post" action="/admin/gallery" enctype="multipart/form-data"><input name="title" placeholder="Image title" required /><input name="imageUrl" placeholder="https://example.com/image.jpg (optional if uploading file)" /><input name="imageFile" type="file" accept="image/*" /><textarea name="description" placeholder="Short description"></textarea><button type="submit">Add Gallery Image</button></form></div>
             </div>
           </div>
         </div>
@@ -218,13 +247,25 @@ router.post("/involvement/:id/delete", async (req, res) => {
   res.redirect("/admin/ngo");
 });
 
-router.post("/gallery", async (req, res) => {
-  await GalleryImage.create(req.body);
+router.post("/gallery", upload.single("imageFile"), async (req, res) => {
+  await GalleryImage.create({
+    title: req.body.title,
+    imageUrl: resolveImageUrl(req),
+    description: req.body.description
+  });
   res.redirect("/admin/ngo");
 });
 
-router.post("/gallery/:id/update", async (req, res) => {
-  await GalleryImage.findByIdAndUpdate(req.params.id, req.body, { runValidators: true });
+router.post("/gallery/:id/update", upload.single("imageFile"), async (req, res) => {
+  await GalleryImage.findByIdAndUpdate(
+    req.params.id,
+    {
+      title: req.body.title,
+      imageUrl: resolveImageUrl(req),
+      description: req.body.description
+    },
+    { runValidators: true }
+  );
   res.redirect("/admin/ngo");
 });
 
@@ -265,10 +306,10 @@ router.get("/volunteers", async (req, res) => {
       content: `
         <div class="card">
           <h2>Volunteer Leads</h2>
-          <table>
+          <div class="table-wrap"><table>
             <thead><tr><th>Name</th><th>Email</th><th>Interest</th><th>Created</th><th>Actions</th></tr></thead>
             <tbody>${rows || '<tr><td colspan="5">No volunteer submissions yet.</td></tr>'}</tbody>
-          </table>
+          </table></div>
         </div>
       `
     })
@@ -309,10 +350,10 @@ router.get("/donations", async (req, res) => {
       content: `
         <div class="card">
           <h2>Donation Records</h2>
-          <table>
+          <div class="table-wrap"><table>
             <thead><tr><th>Donor</th><th>Email</th><th>Amount</th><th>Purpose</th><th>Status</th><th>Certificate</th><th>Order ID</th></tr></thead>
             <tbody>${rows || '<tr><td colspan="7">No donations yet.</td></tr>'}</tbody>
-          </table>
+          </table></div>
         </div>
       `
     })

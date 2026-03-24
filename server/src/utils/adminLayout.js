@@ -34,22 +34,30 @@ export function layout({ title, content, adminName }) {
         .nav { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
         .nav a, .logout-btn { text-decoration: none; color: var(--brand); font-weight: 600; padding: 10px 14px; border-radius: 999px; background: var(--brand-soft); border: 0; cursor: pointer; }
         .grid { display: grid; gap: 20px; }
-        .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px; box-shadow: 0 8px 30px rgba(20, 33, 38, 0.05); }
+        .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px; box-shadow: 0 8px 30px rgba(20, 33, 38, 0.05); overflow: hidden; }
         .split { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; }
         .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
         .stat { padding: 16px; border-radius: 16px; background: #f8faf7; border: 1px solid var(--line); }
-        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        .table-wrap { width: 100%; overflow-x: auto; }
+        table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 14px; }
         th, td { padding: 12px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
         th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
         form.inline, .stack { display: grid; gap: 10px; }
         input, textarea, select { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font: inherit; }
+        input[type="file"] { padding: 10px; background: #f8faf7; }
         textarea { min-height: 100px; resize: vertical; }
         .actions { display: flex; gap: 8px; flex-wrap: wrap; }
         button { border: 0; border-radius: 10px; padding: 10px 14px; font-weight: 600; cursor: pointer; color: white; background: var(--brand); }
         button.alt { background: var(--accent); color: #2e220d; }
         button.danger { background: var(--danger); }
         .muted { color: var(--muted); }
-        @media (max-width: 900px) { .split, .stats { grid-template-columns: 1fr; } }
+        @media (max-width: 900px) {
+          .shell { width: min(100% - 20px, 1200px); padding-top: 16px; }
+          .split, .stats { grid-template-columns: 1fr; }
+          .card { padding: 16px; }
+          .nav { width: 100%; }
+          .nav a, .logout-btn { width: 100%; display: inline-flex; justify-content: center; text-align: center; }
+        }
       </style>
     </head>
     <body>
