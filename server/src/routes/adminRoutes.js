@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { getLoginPage, loginAdmin, logoutAdmin } from "../controllers/authController.js";
 import { Donation } from "../models/Donation.js";
+import { GalleryImage } from "../models/GalleryImage.js";
 import { Impact } from "../models/Impact.js";
 import { Involvement } from "../models/Involvement.js";
 import { Program } from "../models/Program.js";
@@ -44,10 +45,11 @@ router.get("/", async (req, res) => {
 });
 
 router.get("/ngo", async (req, res) => {
-  const [impact, programs, involvement] = await Promise.all([
+  const [impact, programs, involvement, galleryImages] = await Promise.all([
     Impact.find().sort({ createdAt: -1 }).lean(),
     Program.find().sort({ createdAt: -1 }).lean(),
-    Involvement.find().sort({ createdAt: -1 }).lean()
+    Involvement.find().sort({ createdAt: -1 }).lean(),
+    GalleryImage.find().sort({ createdAt: -1 }).lean()
   ]);
 
   const impactRows = impact
@@ -108,6 +110,28 @@ router.get("/ngo", async (req, res) => {
     )
     .join("");
 
+  const imageRows = galleryImages
+    .map(
+      (item) => `
+        <tr>
+          <td><img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.title)}" style="width:96px;height:72px;object-fit:cover;border-radius:12px;" /></td>
+          <td>${escapeHtml(item.title)}</td>
+          <td>${escapeHtml(item.description || "-")}</td>
+          <td>
+            <form class="inline" method="post" action="/admin/gallery/${item._id}/update">
+              <input name="title" value="${escapeHtml(item.title)}" required />
+              <input name="imageUrl" value="${escapeHtml(item.imageUrl)}" required />
+              <textarea name="description">${escapeHtml(item.description || "")}</textarea>
+              <div class="actions"><button class="alt" type="submit">Update</button></div>
+            </form>
+            <form method="post" action="/admin/gallery/${item._id}/delete">
+              <button class="danger" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>`
+    )
+    .join("");
+
   res.send(
     layout({
       title: "NGO Content",
@@ -133,6 +157,14 @@ router.get("/ngo", async (req, res) => {
             <div class="split">
               <div><table><thead><tr><th>Message</th><th>Actions</th></tr></thead><tbody>${involvementRows}</tbody></table></div>
               <div><form class="stack" method="post" action="/admin/involvement"><textarea name="text" placeholder="Call-to-action text" required></textarea><button type="submit">Create Involvement Row</button></form></div>
+            </div>
+          </div>
+          <div class="card">
+            <h2>Gallery Images</h2>
+            <p class="muted">Add public image URLs and captions here. These images appear in the swipe gallery on the website.</p>
+            <div class="split">
+              <div><table><thead><tr><th>Preview</th><th>Title</th><th>Description</th><th>Actions</th></tr></thead><tbody>${imageRows}</tbody></table></div>
+              <div><form class="stack" method="post" action="/admin/gallery"><input name="title" placeholder="Image title" required /><input name="imageUrl" placeholder="https://example.com/image.jpg" required /><textarea name="description" placeholder="Short description"></textarea><button type="submit">Add Gallery Image</button></form></div>
             </div>
           </div>
         </div>
@@ -183,6 +215,21 @@ router.post("/involvement/:id/update", async (req, res) => {
 
 router.post("/involvement/:id/delete", async (req, res) => {
   await Involvement.findByIdAndDelete(req.params.id);
+  res.redirect("/admin/ngo");
+});
+
+router.post("/gallery", async (req, res) => {
+  await GalleryImage.create(req.body);
+  res.redirect("/admin/ngo");
+});
+
+router.post("/gallery/:id/update", async (req, res) => {
+  await GalleryImage.findByIdAndUpdate(req.params.id, req.body, { runValidators: true });
+  res.redirect("/admin/ngo");
+});
+
+router.post("/gallery/:id/delete", async (req, res) => {
+  await GalleryImage.findByIdAndDelete(req.params.id);
   res.redirect("/admin/ngo");
 });
 

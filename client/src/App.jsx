@@ -2,6 +2,7 @@
   import { useEffect, useState } from "react";
 import { Hero } from "./components/Hero";
 import { ImpactSection } from "./components/ImpactSection";
+import { ImageGallerySection } from "./components/ImageGallerySection";
 import { ProgramSection } from "./components/ProgramSection";
 import { InvolvementSection } from "./components/InvolvementSection";
 import { DonationSection } from "./components/DonationSection";
@@ -35,7 +36,8 @@ const fallbackData = {
     "Volunteer on weekends with local field teams.",
     "Sponsor education and nutrition kits for a family.",
     "Partner with us for CSR and long-term community impact."
-  ]
+  ],
+  images: []
 };
 
 function App() {
@@ -203,6 +205,7 @@ function App() {
       <main>
         <ImpactSection items={ngoData.impact} />
         <ProgramSection programs={ngoData.programs} />
+        <ImageGallerySection images={ngoData.images} />
         <InvolvementSection involvement={ngoData.involvement} />
         <DonationSection
           onSubmit={handleDonationSubmit}

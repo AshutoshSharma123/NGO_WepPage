@@ -1,18 +1,21 @@
+import { GalleryImage } from "../models/GalleryImage.js";
 import { Impact } from "../models/Impact.js";
 import { Involvement } from "../models/Involvement.js";
 import { Program } from "../models/Program.js";
 
 export async function getNgoOverview(req, res) {
-  const [impact, programs, involvement] = await Promise.all([
+  const [impact, programs, involvement, images] = await Promise.all([
     Impact.find().sort({ createdAt: -1 }).lean(),
     Program.find().sort({ createdAt: -1 }).lean(),
-    Involvement.find().sort({ createdAt: -1 }).lean()
+    Involvement.find().sort({ createdAt: -1 }).lean(),
+    GalleryImage.find().sort({ createdAt: -1 }).lean()
   ]);
 
   res.json({
     impact: impact.map(({ _id, __v, createdAt, updatedAt, ...item }) => item),
     programs: programs.map(({ _id, __v, createdAt, updatedAt, ...item }) => item),
-    involvement: involvement.map((item) => item.text)
+    involvement: involvement.map((item) => item.text),
+    images: images.map(({ _id, __v, createdAt, updatedAt, ...item }) => item)
   });
 }
 
