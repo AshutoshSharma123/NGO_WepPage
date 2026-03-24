@@ -1,6 +1,4 @@
-import fs from "fs";
 import multer from "multer";
-import path from "path";
 import { Router } from "express";
 import { getLoginPage, loginAdmin, logoutAdmin } from "../controllers/authController.js";
 import { Donation } from "../models/Donation.js";
@@ -11,29 +9,14 @@ import { Program } from "../models/Program.js";
 import { Volunteer } from "../models/Volunteer.js";
 import { requireAdminAuth } from "../middleware/authMiddleware.js";
 import { escapeHtml, layout } from "../utils/adminLayout.js";
-import { fileURLToPath } from "url";
 
 const router = Router();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const uploadDirectory = path.resolve(__dirname, "../../uploads");
-
-fs.mkdirSync(uploadDirectory, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, callback) => callback(null, uploadDirectory),
-  filename: (_req, file, callback) => {
-    const safeName = file.originalname.replace(/\s+/g, "-");
-    callback(null, `${Date.now()}-${safeName}`);
-  }
-});
-
-const upload = multer({ storage });
+const upload = multer({ storage: multer.memoryStorage() });
 
 function resolveImageUrl(req) {
-  if (req.file?.filename) {
-    const publicBase = process.env.SERVER_PUBLIC_URL || `${req.protocol}://${req.get("host")}`;
-    return `${publicBase}/uploads/${req.file.filename}`;
+  if (req.file?.buffer) {
+    const base64 = req.file.buffer.toString("base64");
+    return `data:${req.file.mimetype};base64,${base64}`;
   }
 
   return req.body.imageUrl;
