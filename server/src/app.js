@@ -9,15 +9,18 @@ import { Donation } from "./models/Donation.js";
 import { escapeHtml } from "./utils/adminLayout.js";
 
 const app = express();
-const allowedOrigins = [
-  "http://localhost:5173",
-  process.env.FRONTEND_URL
-].filter(Boolean);
+const allowedOrigins = ["http://localhost:5173", process.env.FRONTEND_URL].filter(
+  Boolean
+);
 
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      const isAllowedVercelOrigin =
+        typeof origin === "string" &&
+        /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin);
+
+      if (!origin || allowedOrigins.includes(origin) || isAllowedVercelOrigin) {
         return callback(null, true);
       }
 
