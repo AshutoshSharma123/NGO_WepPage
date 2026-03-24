@@ -28,35 +28,46 @@ export function getLoginPage(req, res) {
 }
 
 export async function loginAdmin(req, res) {
-  const admin = await AdminUser.findOne({ email: String(req.body.email).toLowerCase() });
+  try {
+    if (!process.env.JWT_SECRET) {
+      throw new Error("JWT_SECRET is missing");
+    }
 
-  if (!admin) {
-    return res.status(401).send(renderLogin("Invalid credentials"));
+    const email = String(req.body.email || "").toLowerCase().trim();
+    const password = String(req.body.password || "");
+    const admin = await AdminUser.findOne({ email });
+
+    if (!admin) {
+      return res.status(401).send(renderLogin("Invalid credentials"));
+    }
+
+    const isValid = await bcrypt.compare(password, admin.passwordHash);
+    if (!isValid) {
+      return res.status(401).send(renderLogin("Invalid credentials"));
+    }
+
+    const token = jwt.sign(
+      {
+        id: admin._id,
+        email: admin.email,
+        name: admin.name
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    res.cookie("adminToken", token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: false,
+      maxAge: 24 * 60 * 60 * 1000
+    });
+
+    return res.redirect("/admin");
+  } catch (error) {
+    console.error("Admin login failed:", error.message);
+    return res.status(500).send(renderLogin("Login failed. Check server configuration."));
   }
-
-  const isValid = await bcrypt.compare(req.body.password, admin.passwordHash);
-  if (!isValid) {
-    return res.status(401).send(renderLogin("Invalid credentials"));
-  }
-
-  const token = jwt.sign(
-    {
-      id: admin._id,
-      email: admin.email,
-      name: admin.name
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: "1d" }
-  );
-
-  res.cookie("adminToken", token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: false,
-    maxAge: 24 * 60 * 60 * 1000
-  });
-
-  return res.redirect("/admin");
 }
 
 export function logoutAdmin(req, res) {
