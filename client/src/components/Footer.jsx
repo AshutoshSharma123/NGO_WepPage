@@ -28,6 +28,7 @@ export function Footer() {
         <span>
           <a href="mailto:aashusharma375@gmail.com">aashusharma375@gmail.com</a>
         </span>
+        <span>© 2026 Developed by Ashutosh Sharma for Sri Ram Charitable Trust, Jammu.</span>
       </div>
     </footer>
   );
