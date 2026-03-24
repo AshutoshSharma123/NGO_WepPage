@@ -18,10 +18,15 @@ const allowedOrigins = [
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      const isAllowedVercelOrigin =
+        typeof origin === "string" &&
+        /^https:\/\/([a-z0-9-]+)\.vercel\.app$/i.test(origin);
+
+      if (!origin || allowedOrigins.includes(origin) || isAllowedVercelOrigin) {
         return callback(null, true);
       }
 
+      console.error("Blocked CORS origin:", origin);
       return callback(new Error("CORS origin not allowed"));
     }
   })
