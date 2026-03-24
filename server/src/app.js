@@ -12,6 +12,8 @@ const app = express();
 const allowedOrigins = [
   "http://localhost:5173",
   "https://ngo-wep-page-client.vercel.app",
+  "https://ngo-weppage.onrender.com",
+  process.env.SERVER_PUBLIC_URL,
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
